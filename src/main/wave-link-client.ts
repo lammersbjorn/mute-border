@@ -18,6 +18,7 @@ export class WaveLinkClient extends EventEmitter {
   private pendingCalls = new Map<number, PendingCall>();
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private micIdentifier: string | null = null;
+  private micHardwareIds = new Set<string>();
   private destroyed = false;
 
   connect(): void {
@@ -101,8 +102,14 @@ export class WaveLinkClient extends EventEmitter {
       }
 
       this.micIdentifier = mic.identifier;
+      this.micHardwareIds.clear();
+      if (mic.inputs) {
+        for (const sub of mic.inputs) {
+          this.micHardwareIds.add(sub.identifier);
+        }
+      }
       const isMuted = mic.localMixer[0];
-      console.log(`[WaveLink] Found mic: "${mic.name}" (muted: ${isMuted})`);
+      console.log(`[WaveLink] Found mic: "${mic.name}" (muted: ${isMuted}, hw ids: ${[...this.micHardwareIds]})`);
       this.emit('connected', mic.name);
       this.emit('mute-changed', isMuted);
     } catch (e) {
@@ -131,10 +138,16 @@ export class WaveLinkClient extends EventEmitter {
     }
 
     // Server-push events (JSON-RPC notifications — no id)
-    if (msg.method === 'inputMuteChanged' && msg.params) {
+    if (msg.method === 'microphoneConfigChanged' && msg.params) {
+      const event = msg.params as { identifier: string; property: string; value: boolean };
+      if (event.property === 'Microphone Mute' && this.micHardwareIds.has(event.identifier)) {
+        console.log(`[WaveLink] Hardware mute changed: ${event.value}`);
+        this.emit('mute-changed', event.value);
+      }
+    } else if (msg.method === 'inputMuteChanged' && msg.params) {
       const event = msg.params as InputMuteChangedEvent;
       if (event.identifier === this.micIdentifier && event.mixerID === 'com.elgato.mix.local') {
-        console.log(`[WaveLink] Mute changed: ${event.value}`);
+        console.log(`[WaveLink] Mixer mute changed: ${event.value}`);
         this.emit('mute-changed', event.value);
       }
     } else if (msg.method === 'inputsChanged') {
