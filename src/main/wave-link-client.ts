@@ -86,6 +86,7 @@ export class WaveLinkClient extends EventEmitter {
   private async onConnected(): Promise<void> {
     try {
       const inputs = await this.rpcCall<WaveLinkInput[]>('getInputConfigs');
+      console.log('[WaveLink] getInputConfigs response:', JSON.stringify(inputs, null, 2));
       const mic = inputs.find((i) => i.inputType === 1 && i.isAvailable);
 
       if (!mic) {
