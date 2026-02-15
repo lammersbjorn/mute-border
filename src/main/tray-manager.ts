@@ -1,89 +1,102 @@
 import { Tray, Menu, app, nativeImage } from 'electron';
 import path from 'node:path';
-import type { ConnectionState } from '../shared/types';
+import type { MuteSource, SourceState } from '../shared/types';
 
 function assetPath(name: string): string {
-  // In production, assets are in the resources dir next to the asar
-  if (app.isPackaged) {
-    return path.join(process.resourcesPath, 'assets', name);
+  return app.isPackaged
+    ? path.join(process.resourcesPath, 'assets', name)
+    : path.join(app.getAppPath(), 'assets', name);
+}
+
+function createTrayIcon(iconName: string): nativeImage {
+  const isMac = process.platform === 'darwin';
+
+  if (isMac) {
+    const templateName = iconName.replace('.png', 'Template.png');
+    const templateIcon = nativeImage.createFromPath(assetPath(templateName));
+    if (!templateIcon.isEmpty()) {
+      return templateIcon;
+    }
   }
-  return path.join(app.getAppPath(), 'assets', name);
+
+  return nativeImage.createFromPath(assetPath(iconName)).resize({ width: 16, height: 16 });
+}
+
+function formatSourceStatus(label: string, state: SourceState): string {
+  switch (state.type) {
+    case 'disabled':
+      return `${label}: Disabled`;
+    case 'disconnected':
+      return `${label}: Disconnected`;
+    case 'connected': {
+      const status = state.muted ? 'Muted' : 'Unmuted';
+      return `${label}: ${state.name ?? 'Unknown'} (${status})`;
+    }
+  }
 }
 
 export class TrayManager {
   private tray: Tray | null = null;
-  private state: ConnectionState = 'disconnected';
-  private micName: string | null = null;
-  private isMuted = false;
+  private sources: MuteSource = {
+    waveLink: { type: 'disabled' },
+    obs: { type: 'disabled' },
+  };
 
   init(): void {
-    const icon = nativeImage.createFromPath(assetPath('tray-icon-disconnected.png'));
-    this.tray = new Tray(icon.resize({ width: 16, height: 16 }));
-    this.tray.setToolTip('Mute Border — Disconnected');
+    const icon = createTrayIcon('tray-icon-disconnected.png');
+    this.tray = new Tray(icon);
+    this.tray.setToolTip('Mute Border');
     this.updateMenu();
   }
 
-  setConnected(micName: string | null): void {
-    this.state = 'connected';
-    this.micName = micName;
-    this.updateIcon();
-    this.updateMenu();
-  }
-
-  setDisconnected(): void {
-    this.state = 'disconnected';
-    this.micName = null;
-    this.isMuted = false;
-    this.updateIcon();
-    this.updateMenu();
-  }
-
-  setMuted(isMuted: boolean): void {
-    this.isMuted = isMuted;
+  updateSourceState(sources: MuteSource): void {
+    this.sources = sources;
     this.updateIcon();
     this.updateMenu();
   }
 
   destroy(): void {
-    if (this.tray) {
-      this.tray.destroy();
-      this.tray = null;
-    }
+    this.tray?.destroy();
+    this.tray = null;
+  }
+
+  private getSourceCounts(): { connected: number; muted: number } {
+    const values = Object.values(this.sources);
+    const connected = values.filter(s => s.type === 'connected');
+    return {
+      connected: connected.length,
+      muted: connected.filter(s => s.muted).length,
+    };
   }
 
   private updateIcon(): void {
     if (!this.tray) return;
 
-    let iconName: string;
-    if (this.state === 'disconnected') {
-      iconName = 'tray-icon-disconnected.png';
-    } else if (this.isMuted) {
-      iconName = 'tray-icon-muted.png';
-    } else {
-      iconName = 'tray-icon-unmuted.png';
-    }
+    const { connected, muted } = this.getSourceCounts();
 
-    const icon = nativeImage.createFromPath(assetPath(iconName));
-    this.tray.setImage(icon.resize({ width: 16, height: 16 }));
+    const iconName = connected === 0
+      ? 'tray-icon-disconnected.png'
+      : muted > 0
+        ? 'tray-icon-muted.png'
+        : 'tray-icon-unmuted.png';
 
-    const tooltip = this.state === 'disconnected'
+    this.tray.setImage(createTrayIcon(iconName));
+
+    const tooltip = connected === 0
       ? 'Mute Border — Disconnected'
-      : `Mute Border — ${this.micName ?? 'Unknown mic'} (${this.isMuted ? 'Muted' : 'Unmuted'})`;
+      : muted > 0
+        ? `Mute Border — Muted (${muted}/${connected})`
+        : 'Mute Border — Unmuted';
+
     this.tray.setToolTip(tooltip);
   }
 
   private updateMenu(): void {
     if (!this.tray) return;
 
-    let statusLabel: string;
-    if (this.state === 'disconnected') {
-      statusLabel = 'Wave Link: Disconnected';
-    } else {
-      statusLabel = `${this.micName ?? 'Unknown mic'}: ${this.isMuted ? 'Muted' : 'Unmuted'}`;
-    }
-
     const menu = Menu.buildFromTemplate([
-      { label: statusLabel, enabled: false },
+      { label: formatSourceStatus('Wave Link', this.sources.waveLink), enabled: false },
+      { label: formatSourceStatus('OBS', this.sources.obs), enabled: false },
       { type: 'separator' },
       {
         label: 'Launch at Login',
