@@ -1,4 +1,3 @@
-// Tuple: [isMuted, volume, fxBypassed, ...rest]
 export type MixerState = [boolean, number, boolean, ...boolean[]];
 
 export type MixerID = 'com.elgato.mix.local' | 'com.elgato.mix.stream';
@@ -30,3 +29,50 @@ export interface InputsChangedEvent {
 }
 
 export type ConnectionState = 'connected' | 'disconnected' | 'connecting';
+
+export type SourceKey = 'waveLink' | 'obs';
+
+export interface OBSConfig {
+  enabled: boolean;
+  host: string;
+  port: number;
+  password: string;
+  inputName: string | null;
+}
+
+export interface WaveLinkConfig {
+  enabled: boolean;
+}
+
+export interface Config {
+  obs: OBSConfig;
+  waveLink: WaveLinkConfig;
+}
+
+export interface OBSInput {
+  inputName: string;
+  inputUuid: string;
+  inputKind: string;
+  unversionedInputKind: string;
+}
+
+export interface OBSInputMuteStateChangedEvent {
+  inputName: string;
+  inputMuted: boolean;
+}
+
+export type SourceState = 
+  | { type: 'connected'; name: string | null; muted: boolean }
+  | { type: 'disconnected' }
+  | { type: 'disabled' };
+
+export interface MuteSource {
+  waveLink: SourceState;
+  obs: SourceState;
+}
+
+export type MuteSourceClient = { 
+  on(event: string, handler: (data: unknown) => void): void;
+  connect(): void;
+  destroy(): void;
+};
