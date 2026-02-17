@@ -2,6 +2,7 @@ declare global {
   interface Window {
     muteBorder: {
       onMuteStateChanged: (callback: (isMuted: boolean) => void) => void;
+      platform: string;
     };
   }
 }
@@ -10,11 +11,7 @@ const overlay = document.getElementById('border-overlay');
 const badge = document.getElementById('muted-badge');
 
 if (overlay && badge) {
-  const platformString =
-    ((navigator as any).userAgentData?.platform as string | undefined) ??
-    navigator.userAgent;
-  const isMac = platformString.toLowerCase().includes('mac');
-  if (isMac) {
+  if (window.muteBorder.platform === 'darwin') {
     overlay.classList.add('rounded-corners');
   }
 

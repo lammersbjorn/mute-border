@@ -97,7 +97,7 @@ On first run, Mute Border creates a config file at:
 ```json
 {
   "obs": {
-    "enabled": true,
+    "enabled": false,
     "host": "127.0.0.1",
     "port": 4455,
     "password": "",
@@ -111,7 +111,7 @@ On first run, Mute Border creates a config file at:
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `obs.enabled` | boolean | `true` | Enable OBS integration |
+| `obs.enabled` | boolean | `false` | Enable OBS integration |
 | `obs.host` | string | `"127.0.0.1"` | OBS WebSocket host |
 | `obs.port` | number | `4455` | OBS WebSocket port |
 | `obs.password` | string | `""` | OBS WebSocket password |

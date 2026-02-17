@@ -15,7 +15,7 @@ Electron 40 + TypeScript + Vite (via Electron Forge 7). Runtime dependencies: `w
 
 ## Architecture
 
-**Main process** (`src/main/main.ts`) — app entry point, loads config, creates clients, wires to aggregator, registers debug shortcuts, enforces single-instance lock.
+**Main process** (`src/main/main.ts`) — app entry point, handles Squirrel events (Windows installer), loads config, creates clients, wires to aggregator, registers debug shortcuts, enforces single-instance lock.
 
 **Config** (`src/main/config.ts`) — loads `~/.mute-border/config.json`, creates default on first run.
 
@@ -29,11 +29,11 @@ Electron 40 + TypeScript + Vite (via Electron Forge 7). Runtime dependencies: `w
 
 **TrayManager** (`src/main/tray-manager.ts`) — system tray icon with states based on aggregated mute state. Context menu shows per-source connection status. Asset paths differ between dev (`app.getAppPath()`) and packaged (`process.resourcesPath`). Uses template icons on macOS for dark/light mode adaptation.
 
-**Preload** (`src/main/preload.ts`) — exposes `window.muteBorder.onMuteStateChanged()` via contextBridge.
+**Preload** (`src/main/preload.ts`) — exposes `window.muteBorder.onMuteStateChanged()` and `window.muteBorder.platform` (`process.platform`) via contextBridge.
 
 **Renderer** (`src/renderer/overlay-renderer.ts` + `overlay.css`) — toggles `.muted` class on `#border-overlay` div. Border is a red inset box-shadow with glow effect, 300ms fade transition.
 
-**Types** (`src/shared/types.ts`) — `WaveLinkInput`, `InputMuteChangedEvent`, `MixerState`, `ConnectionState`, `Config`, `OBSConfig`, `SourceState`, `MuteSource`.
+**Types** (`src/shared/types.ts`) — `WaveLinkInput`, `InputMuteChangedEvent`, `MixerState`, `Config`, `OBSConfig`, `SourceState`, `MuteSource`.
 
 ## Configuration
 
@@ -42,7 +42,7 @@ Config file: `~/.mute-border/config.json`
 ```json
 {
   "obs": {
-    "enabled": true,
+    "enabled": false,
     "host": "127.0.0.1",
     "port": 4455,
     "password": "",
@@ -56,7 +56,7 @@ Config file: `~/.mute-border/config.json`
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `obs.enabled` | boolean | true | Enable OBS integration |
+| `obs.enabled` | boolean | false | Enable OBS integration |
 | `obs.host` | string | "127.0.0.1" | OBS WebSocket host |
 | `obs.port` | number | 4455 | OBS WebSocket port |
 | `obs.password` | string | "" | OBS WebSocket password |
@@ -65,12 +65,12 @@ Config file: `~/.mute-border/config.json`
 
 ## Key Details
 
-- **Debug shortcut** (dev mode only): `Cmd+Shift+M` (macOS) / `Ctrl+Shift+M` (Windows) — toggle simulated mute
+- **Debug shortcut** (dev mode only): `Cmd+Shift+M` (macOS) / `Ctrl+Shift+M` (Windows) — toggle simulated mute via aggregator (sets waveLink source to a "Debug" connected state)
 - **Overlay windows**: frameless, transparent, `alwaysOnTop: 'screen-saver'`, `ignoreMouseEvents: true`, visible on all workspaces, `visibleOnFullScreen: true` (macOS fullscreen support)
-- **Rounded corners**: macOS only, applied via CSS `.rounded-corners` class
+- **Rounded corners**: macOS only (`window.muteBorder.platform === 'darwin'`), applied via CSS `.rounded-corners` class
 - **Forge config** (`forge.config.ts`): asar enabled, `assets/` copied as extraResource, Fuses plugin locks down Node options and cookie encryption, DMG maker for macOS
 - **Tray icons**: 16x16 PNGs in `assets/` (disconnected, muted, unmuted) + template icons (`*Template.png`) for macOS dark/light mode
-- **Vite config**: `ws`, `electron`, and `obs-websocket-js` are external in main process build
+- **Vite config**: `electron`, `bufferutil`, and `utf-8-validate` are external in main process build
 - **On disconnect**: border hides only if ALL sources disconnect, individual source disconnection doesn't hide border if others are connected, reconnect scheduled every 5s
 - **Mute logic**: OR aggregation — border shows if ANY connected source reports muted state
 - **Cross-platform**: macOS + Windows, platform-specific keyboard shortcuts and tray icon handling

@@ -6,4 +6,5 @@ contextBridge.exposeInMainWorld('muteBorder', {
       callback(isMuted);
     });
   },
+  platform: process.platform,
 });

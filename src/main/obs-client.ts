@@ -17,6 +17,7 @@ export class OBSClient extends EventEmitter {
   private obs: OBSWebSocket | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private destroyed = false;
+  private connected = false;
   private readonly config: OBSConfig;
   private currentInput: string | null = null;
 
@@ -32,6 +33,7 @@ export class OBSClient extends EventEmitter {
     const url = `ws://${this.config.host}:${this.config.port}`;
     console.log(`[OBS] Connecting to ${url}`);
 
+    this.connected = true;
     this.obs = new OBSWebSocket();
 
     this.obs.on('ConnectionOpened', () => {
@@ -81,7 +83,9 @@ export class OBSClient extends EventEmitter {
   }
 
   private handleDisconnect(): void {
-    this.currentInput = null;
+    if (!this.connected) return;
+    this.connected = false;
+    this.cleanup();
     this.emit('disconnected');
     this.scheduleReconnect();
   }

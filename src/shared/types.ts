@@ -28,8 +28,6 @@ export interface InputsChangedEvent {
   inputs: WaveLinkInput[];
 }
 
-export type ConnectionState = 'connected' | 'disconnected' | 'connecting';
-
 export type SourceKey = 'waveLink' | 'obs';
 
 export interface OBSConfig {
@@ -71,8 +69,8 @@ export interface MuteSource {
   obs: SourceState;
 }
 
-export type MuteSourceClient = { 
-  on(event: string, handler: (data: unknown) => void): void;
+export type MuteSourceClient = {
+  on(event: 'connected' | 'disconnected' | 'mute-changed', handler: (data: unknown) => void): void;
   connect(): void;
   destroy(): void;
 };

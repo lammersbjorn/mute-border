@@ -14,7 +14,7 @@ export class MuteAggregator extends EventEmitter {
   }
 
   getSources(): MuteSource {
-    return { ...this.sources };
+    return structuredClone(this.sources);
   }
 
   isMuted(): boolean {

@@ -8,7 +8,7 @@ const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
 
 const DEFAULT_CONFIG: Config = {
   obs: {
-    enabled: true,
+    enabled: false,
     host: '127.0.0.1',
     port: 4455,
     password: '',

@@ -7,6 +7,14 @@ import { MuteAggregator } from './mute-aggregator';
 import { loadConfig } from './config';
 import type { SourceKey, MuteSourceClient } from '../shared/types';
 
+// Handle Squirrel events for Windows installer
+if (process.platform === 'win32') {
+  const squirrelArgs = ['--squirrel-install', '--squirrel-updated', '--squirrel-uninstall', '--squirrel-obsolete'];
+  if (squirrelArgs.some(arg => process.argv.includes(arg))) {
+    app.quit();
+  }
+}
+
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 }
@@ -81,7 +89,12 @@ app.on('ready', () => {
     const toggleDebug = (): void => {
       debugMuted = !debugMuted;
       console.log(`[Debug] Mute: ${debugMuted}`);
-      overlayManager.sendMuteState(debugMuted);
+      aggregator.setSourceState('waveLink', {
+        type: 'connected',
+        name: 'Debug',
+        muted: debugMuted,
+      });
+      trayManager.updateSourceState(aggregator.getSources());
     };
 
     globalShortcut.register(accelerator, toggleDebug);

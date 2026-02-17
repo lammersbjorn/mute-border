@@ -123,7 +123,7 @@ export class WaveLinkClient extends EventEmitter {
       this.emit('mute-changed', isMuted);
     } catch (error) {
       console.error('[WaveLink] Failed to get inputs:', error);
-      this.handleDisconnect();
+      this.emit('connected', null);
     }
   }
 
